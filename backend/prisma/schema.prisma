@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  AGENT
+  CUSTOMER
+}
+
+enum PolicyStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String   @unique
+  password   String
+  role       Role     @default(CUSTOMER)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer   Customer?
+}
+
+model Customer {
+  id          Int      @id @default(autoincrement())
+  name        String
+  dob         DateTime
+  phone       String
+  address     String
+  email       String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      Int      @unique
+  user        User     @relation(fields: [userId], references: [id])
+
+  policies    Policy[]
+  claims      Claim[]
+  documents   Document[]
+}
+
+model Policy {
+  id             Int      @id @default(autoincrement())
+  policyType     String
+  policyNumber   String   @unique
+  premiumAmount  Decimal  @db.Decimal(10, 2)
+  startDate      DateTime
+  endDate        DateTime
+  status         PolicyStatus @default(ACTIVE)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customerId     Int
+  customer       Customer @relation(fields: [customerId], references: [id])
+
+  claims         Claim[]
+  payments       PremiumPayment[]
+}
+
+model Claim {
+  id             Int      @id @default(autoincrement())
+  claimAmount    Decimal  @db.Decimal(10, 2)
+  reason         String
+  status         ClaimStatus @default(PENDING)
+  submissionDate DateTime @default(now())
+
+  customerId     Int
+  customer       Customer @relation(fields: [customerId], references: [id])
+
+  policyId       Int
+  policy         Policy @relation(fields: [policyId], references: [id])
+
+  documents      Document[]
+}
+
+model PremiumPayment {
+  id            Int      @id @default(autoincrement())
+  paymentDate   DateTime @default(now())
+  amount        Decimal  @db.Decimal(10, 2)
+  paymentStatus PaymentStatus @default(PENDING)
+
+  policyId      Int
+  policy        Policy @relation(fields: [policyId], references: [id])
+}
+
+model Document {
+  id           Int      @id @default(autoincrement())
+  fileName     String
+  filePath     String
+  uploadedAt   DateTime @default(now())
+
+  customerId   Int
+  customer     Customer @relation(fields: [customerId], references: [id])
+
+  claimId      Int?
+  claim        Claim?   @relation(fields: [claimId], references: [id])
+}
